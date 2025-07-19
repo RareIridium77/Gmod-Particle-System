@@ -15,6 +15,8 @@ local doJob = function(p, job)
         local ent = Entity(entID)
         if not IsValid(ent) then
             gp:SetEntityID(nil)
+            job.emitter:Finish()
+            table.remove(activeEmitters, i)
         else
             pos = ent:GetPos() + ent:GetUp() * 5
             p:SetVelocityScale(true)
