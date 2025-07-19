@@ -18,7 +18,8 @@ local doJob = function(p, job)
             job.emitter:Finish()
             table.remove(activeEmitters, i)
         else
-            pos = ent:GetPos() + ent:GetUp() * 5
+            local maxs = ent:OBBMaxs().z * 0.5
+            pos = ent:GetPos() + ent:GetUp() * maxs
             p:SetVelocityScale(true)
         end
     end
