@@ -3,7 +3,7 @@ GParticle.__index = GParticle
 
 local dParams = {
     lifetime      = 2.5,
-    speed         = 15,
+    speed         = 1,
     color         = {194, 178, 128},
     pos           = Vector(0, 0, 0),
     use3D         = false,
@@ -26,6 +26,8 @@ local dParams = {
     emitRate      = 0,
     entityID      = -1,
     particleID    = "basic",
+    wind          = vector_origin,
+    windTurbulence= 0.05,
 }
 
 local dParamTypes = {
@@ -53,6 +55,8 @@ local dParamTypes = {
     emitRate     = "float",
     entityID     = "int",
     particleID   = "string",
+    wind         = "vector",
+    windTurbulence="float"
 }
 
 local sub   = string.sub
@@ -76,12 +80,21 @@ function GParticle:new(params)
         obj.entityID = params.entityParent:EntIndex()
     end
 
-    for key, default in pairs(dParams) do
-        obj[key] = params and params[key] or default
+    for k, default in pairs(dParams) do
+        obj[k] = (params and params[k] ~= nil) and params[k] or default
     end
 
-
     return obj
+end
+
+function GParticle:AddGravity(gravity)
+    assert(isvector(gravity), "gravity is not vector. Cannot add it")
+    self.gravity = self.gravity + gravity
+end
+
+function GParticle:AddVelocity(velocity)
+    assert(isvector(velocity), "velocity is not vector. Cannot add it")
+    self.velocity = self.velocity + velocity
 end
 
 function GParticle:ToTable()
@@ -97,8 +110,12 @@ end
 local netWriters = {
     float  = function(v) net.WriteFloat(v) end,
     vector = function(v) net.WriteVector(v) end,
-    color  = function(v)
-        if istable(v) and #v >= 3 then
+    color = function(v)
+        if IsColor(v) then
+            net.WriteUInt(v.r, 8)
+            net.WriteUInt(v.g, 8)
+            net.WriteUInt(v.b, 8)
+        elseif istable(v) and #v >= 3 then
             net.WriteUInt(v[1], 8)
             net.WriteUInt(v[2], 8)
             net.WriteUInt(v[3], 8)

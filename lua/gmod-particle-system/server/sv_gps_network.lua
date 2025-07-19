@@ -50,6 +50,14 @@ local IsTraceVisible = function(pos)
     return not tr.StartSolid
 end
 
+local getTurbulence = function()
+    return GParticleSystem.__internal.GetWindTurbulence() or 0
+end
+
+local getWind = function()
+    return GParticleSystem.__internal.GetWindVelocity() or Vector(0, 0, 0)
+end
+
 function gnet:Emit(dt)
     local gp = gparticle:new(dt)
     local maxCnt = maxCountCvar:GetInt()
@@ -60,8 +68,10 @@ function gnet:Emit(dt)
 
     local ok = hook.Run("gparticle.PreEmit", gp)
     if ok == false then return end
-
+    
     net.Start("gparticle.emit", unreliableCvar:GetBool())
+    gp:SetWind(getWind())
+    gp:SetWindTurbulence(getTurbulence())
     gp:WriteToNet()
     if optimizedCvar:GetBool() then
         net.SendPVS(gp:GetPos())
@@ -83,6 +93,10 @@ function gnet:EmitToPlayer(dt, ply)
     if ok == false then return end
 
     net.Start("gparticle.emit", unreliableCvar:GetBool())
+
+    local wind = getWind()
+    gp:SetWind(getWind())
+    gp:SetWindTurbulence(getTurbulence())
     gp:WriteToNet()
     net.Send(ply)
 

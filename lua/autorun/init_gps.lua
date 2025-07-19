@@ -16,6 +16,7 @@ end
 -- Server
 if SERVER then
     include("gmod-particle-system/server/sv_gps_network.lua")
+    include("gmod-particle-system/server/sv_gps_wind.lua")
     include("gmod-particle-system/server/sv_gps_base.lua")
 end
 

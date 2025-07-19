@@ -8,6 +8,42 @@ local sharedEmitter
 
 local doJob = function(p, job)
     local gp = job.gp
+    local pos = gp:GetPos()
+
+    local entID = gp:GetEntityID()
+    if entID and entID > 0 then
+        local ent = Entity(entID)
+        if not IsValid(ent) then
+            gp:SetEntityID(nil)
+        else
+            pos = ent:GetPos() + ent:GetUp() * 5
+            p:SetVelocityScale(true)
+        end
+    end
+
+    p:SetPos(pos)
+
+    local wind = gp:GetWind() or vector_origin
+    if wind ~= vector_origin then
+        local windDragForce    = wind * 0.1
+        local dragAdd = windDragForce * 0.015
+
+        p:SetNextThink(CurTime())
+
+        debugoverlay.Line(pos, pos + wind, 1, Color(0, 255, 255), true)
+        debugoverlay.Text(pos + Vector(0, 0, 10), "Wind", 1, true)
+
+        p:SetThinkFunction(function(pa)
+            local turb = gp:GetWindTurbulence() or 0
+            local randomTurbulence = VectorRand() * (0.1 * turb)
+            pa:SetGravity(pa:GetGravity() + dragAdd + randomTurbulence)
+            pa:SetNextThink(CurTime() + 0.015)
+        end)
+    end
+
+    p:SetVelocity(gp:GetVelocity() * gp:GetSpeed())
+    p:SetGravity(gp:GetGravity())
+
     p:SetDieTime(gp:GetLifetime())
     p:SetStartAlpha(gp:GetStartAlpha())
     p:SetEndAlpha(gp:GetEndAlpha())
@@ -16,8 +52,6 @@ local doJob = function(p, job)
     p:SetColor(unpack(gp:GetColor()))
     p:SetRoll(gp:GetRoll())
     p:SetRollDelta(gp:GetRollDelta())
-    p:SetVelocity(gp:GetVelocity() + VectorRand() * gp:GetSpeed())
-    p:SetGravity(gp:GetGravity())
     p:SetAirResistance(gp:GetAirResistance())
     p:SetCollide(gp:GetCollide())
     p:SetBounce(gp:GetBounce())
@@ -31,26 +65,35 @@ end
 hook.Add("Think", "GParticleSystem.EmitStepwise", function()
     for i = #activeEmitters, 1, -1 do
         local job = activeEmitters[i]
+        local gp = job.gp
 
-        if job.gp.emitRate <= 0 then
+        if gp:GetParticleID() then
+            debugoverlay.Text(
+                gp:GetPos(),
+                gp:GetParticleID(),
+                1,
+                true
+            )
+        end
+
+        if gp.emitRate <= 0 then
             for j = 1, job.count do
-                local pos = job.gp:GetPos()
-                local entID = job.gp:GetEntityID()
-                if entID and entID > 0 then
-                    local ent = Entity(entID)
-                    if IsValid(ent) then
-                        pos = ent:GetPos()
-                    end
-                end
+                local pos = gp:GetPos()
+               
+                local p = job.emitter:Add(gp:GetEffectName(), pos)
+                local ok = hook.Run("gparticle.PreEmit", p, j, gp)
 
-                local p = job.emitter:Add(job.gp:GetEffectName(), pos)
-                local ok = hook.Run("gparticle.PreEmit", p, j, job.gp)
+                if not p then
+                    job.emitter:Finish()
+                    table.remove(activeEmitters, i)
+                    continue
+                end
 
                 if p and ok ~= false then
                     doJob(p, job)
                 end
 
-                hook.Run("gparticle.PostEmit", p, j, job.gp)
+                hook.Run("gparticle.PostEmit", p, j, gp)
             end
 
             job.emitter:Finish()
@@ -62,26 +105,15 @@ hook.Add("Think", "GParticleSystem.EmitStepwise", function()
             job.current = job.current + 1
             job.nextEmit = CurTime() + job.emitRate
 
-            local pos = job.gp:GetPos()
-            local entID = job.gp:GetEntityID()
-            if entID and entID > 0 then
-                local ent = Entity(entID)
-                if IsValid(ent) then
-                    pos = ent:GetPos()
-                else
-                    table.remove(activeEmitters, i)
-                    continue 
-                end
-            end
-
-            local p = job.emitter:Add(job.gp:GetEffectName(), pos)
-            local ok = hook.Run("gparticle.PreEmit", p, job.current, job.gp)
+            local pos = gp:GetPos()
+            local p = job.emitter:Add(gp:GetEffectName(), pos)
+            local ok = hook.Run("gparticle.PreEmit", p, job.current, gp)
 
             if p and ok ~= false then
                doJob(p, job) 
             end
 
-            hook.Run("gparticle.PostEmit", p, job.current, job.gp)
+            hook.Run("gparticle.PostEmit", p, job.current, gp)
 
             if job.current >= job.count then
                 job.emitter:Finish()

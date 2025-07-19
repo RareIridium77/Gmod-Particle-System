@@ -25,6 +25,10 @@ function GParticleSystem:ClearToPlayer(ply)
     gnet:ClearToPlayer(ply)
 end
 
+function GParticleSystem:GetWindVelocity()
+    return self.__internal.GetWindVelocity()
+end
+
 concommand.Add("gparticle_test", function(ply, cmd, args)
     if not IsValid(ply) or not ply:IsPlayer() then return end
 
@@ -41,7 +45,6 @@ concommand.Add("gparticle_test", function(ply, cmd, args)
             pos           = pos,
             effectName    = "particles/dust",
             lifetime      = math.Rand(1.8, 7),
-            speed         = 25,
             startSize     = math.Rand(5, 7),
             endSize       = math.Rand(1, 2),
             color         = {194, 178, 128},
