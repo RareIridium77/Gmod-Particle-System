@@ -4,7 +4,7 @@ GParticleSystem.__internal = GParticleSystem.__internal or {}
 local gparticle = include("gparticle.lua")
 
 local activeEmitters = {}
-local sharedEmitter
+local allParticles = {}
 
 local doJob = function(p, job)
     local gp = job.gp
@@ -63,6 +63,8 @@ local doJob = function(p, job)
     p:SetCollideCallback(function(part, hitpos, normal)
         hook.Run("gparticle.OnCollide", part, hitpos, normal)
     end)
+
+    table.insert(allParticles, p)
 end
 
 hook.Add("Think", "GParticleSystem.EmitStepwise", function()
@@ -80,14 +82,18 @@ hook.Add("Think", "GParticleSystem.EmitStepwise", function()
         end
 
         if gp.emitRate <= 0 then
+            local emitter = job.emitter
+            
             for j = 1, job.count do
                 local pos = gp:GetPos()
-               
-                local p = job.emitter:Add(gp:GetEffectName(), pos)
+
+                if not emitter then continue end
+
+                local p = emitter:Add(gp:GetEffectName(), pos)
                 local ok = hook.Run("gparticle.PreEmit", p, j, gp)
 
                 if not p then
-                    job.emitter:Finish()
+                    emitter:Finish()
                     table.remove(activeEmitters, i)
                     continue
                 end
@@ -99,7 +105,7 @@ hook.Add("Think", "GParticleSystem.EmitStepwise", function()
                 hook.Run("gparticle.PostEmit", p, j, gp)
             end
 
-            job.emitter:Finish()
+            emitter:Finish()
             table.remove(activeEmitters, i)
             continue
         end
@@ -109,7 +115,11 @@ hook.Add("Think", "GParticleSystem.EmitStepwise", function()
             job.nextEmit = CurTime() + job.emitRate
 
             local pos = gp:GetPos()
-            local p = job.emitter:Add(gp:GetEffectName(), pos)
+            local emitter = job.emitter
+
+            if not emitter then continue end
+
+            local p = emitter:Add(gp:GetEffectName(), pos)
             local ok = hook.Run("gparticle.PreEmit", p, job.current, gp)
 
             if p and ok ~= false then
@@ -119,7 +129,7 @@ hook.Add("Think", "GParticleSystem.EmitStepwise", function()
             hook.Run("gparticle.PostEmit", p, job.current, gp)
 
             if job.current >= job.count then
-                job.emitter:Finish()
+                emitter:Finish()
                 table.remove(activeEmitters, i)
             end
         end
@@ -142,10 +152,24 @@ local function emit()
 end
 
 local function clear()
-    if sharedEmitter and isfunction(sharedEmitter.Finish) then
-        sharedEmitter:Finish()
+    for i = #activeEmitters, 1, -1 do
+        local job = activeEmitters[i]
+        if job and job.emitter and isfunction(job.emitter.Finish) then
+            job.emitter:Finish()
+        end
+        table.remove(activeEmitters, i)
     end
+
+    for _, p in ipairs(allParticles) do
+        if IsValid(p) then
+            p:SetThinkFunction(nil)
+            p:SetDieTime(0)
+        end
+    end
+    table.Empty(allParticles)
 end
 
 net.Receive("gparticle.emit", emit)
 net.Receive("gparticle.clear", clear)
+
+concommand.Add("gparticle.clear", clear)

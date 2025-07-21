@@ -107,27 +107,27 @@ end
 
 --- [ Net type dispatch ] ---
 
+local floatLimit = 131072
+local intLimit = 32768
+local stringLimit = 128
+
 local netWriters = {
-    float  = function(v) net.WriteFloat(v) end,
+    float  = function(v) net.WriteFloat(math.Clamp(v, -floatLimit, floatLimit)) end,
     vector = function(v) net.WriteVector(v) end,
     color = function(v)
+        local r, g, b = 255, 255, 255
         if IsColor(v) then
-            net.WriteUInt(v.r, 8)
-            net.WriteUInt(v.g, 8)
-            net.WriteUInt(v.b, 8)
+            r, g, b = v.r, v.g, v.b
         elseif istable(v) and #v >= 3 then
-            net.WriteUInt(v[1], 8)
-            net.WriteUInt(v[2], 8)
-            net.WriteUInt(v[3], 8)
-        else
-            net.WriteUInt(255, 8)
-            net.WriteUInt(255, 8)
-            net.WriteUInt(255, 8)
+            r, g, b = v[1], v[2], v[3]
         end
+        net.WriteUInt(r or 255, 8)
+        net.WriteUInt(g or 255, 8)
+        net.WriteUInt(b or 255, 8)
     end,
-    bool   = function(v) net.WriteBool(v) end,
-    string = function(v) net.WriteString(v) end,
-    int    = function(v) net.WriteInt(v, 16) end,
+    bool   = function(v) net.WriteBit(v) end,
+    string = function(v) net.WriteString(string.sub(v, 1, stringLimit or 128)) end,
+    int = function(v) net.WriteInt(math.Clamp(v, -intLimit, intLimit), 16) end,
     angle  = function(v) net.WriteAngle(v) end
 }
 
@@ -137,7 +137,7 @@ local netReaders = {
     color  = function()
         return { net.ReadUInt(8), net.ReadUInt(8), net.ReadUInt(8) }
     end,
-    bool   = function() return net.ReadBool() end,
+    bool   = function() return tobool(net.ReadBit()) end,
     string = function() return net.ReadString() end,
     int    = function() return net.ReadInt(16) end,
     angle  = function() return net.ReadAngle() end

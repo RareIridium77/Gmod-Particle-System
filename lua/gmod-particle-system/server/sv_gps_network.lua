@@ -58,26 +58,37 @@ local getWind = function()
     return GParticleSystem.__internal.GetWindVelocity() or Vector(0, 0, 0)
 end
 
+local function SendParticle(gp, target)
+    local pos = gp:GetPos()
+    if not pos or not isvector(pos) or not IsTraceVisible(pos) then return end
+
+    gp:SetWind(getWind())
+    gp:SetWindTurbulence(getTurbulence())
+
+    net.Start("gparticle.emit", unreliableCvar:GetBool())
+    gp:WriteToNet()
+
+    if target == nil then
+        if optimizedCvar:GetBool() then
+            net.SendPVS(pos)
+        else
+            net.Broadcast()
+        end
+    elseif IsValidPlayer(target) then
+        net.Send(target)
+    end
+end
+
 function gnet:Emit(dt)
     local gp = gparticle:new(dt)
     local maxCnt = maxCountCvar:GetInt()
 
-    gp.count = math.min(dt.count or 1, maxCnt) -- limit
-
-    if not IsTraceVisible(gp:GetPos()) then return end
+    gp.count = math.Clamp(tonumber(dt.count) or 1, 1, maxCnt)
 
     local ok = hook.Run("gparticle.PreEmit", gp)
     if ok == false then return end
-    
-    net.Start("gparticle.emit", unreliableCvar:GetBool())
-    gp:SetWind(getWind())
-    gp:SetWindTurbulence(getTurbulence())
-    gp:WriteToNet()
-    if optimizedCvar:GetBool() then
-        net.SendPVS(gp:GetPos())
-    else
-        net.Broadcast()
-    end
+
+    SendParticle(gp)
 
     hook.Run("gparticle.PostEmit", gp)
 end
@@ -86,19 +97,14 @@ function gnet:EmitToPlayer(dt, ply)
     if not IsValidPlayer(ply) then return end
 
     local gp = gparticle:new(dt)
+    local maxCnt = maxCountCvar:GetInt()
 
-    if not IsTraceVisible(gp:GetPos()) then return end
+    gp.count = math.Clamp(tonumber(dt.count) or 1, 1, maxCnt)
 
     local ok = hook.Run("gparticle.PreEmit", gp, ply)
     if ok == false then return end
 
-    net.Start("gparticle.emit", unreliableCvar:GetBool())
-
-    local wind = getWind()
-    gp:SetWind(getWind())
-    gp:SetWindTurbulence(getTurbulence())
-    gp:WriteToNet()
-    net.Send(ply)
+    SendParticle(gp, ply)
 
     hook.Run("gparticle.PostEmit", gp, ply)
 end
