@@ -32,6 +32,13 @@ local tracingCvar = CreateConVar(
     0, 1
 )
 
+local cooldownCvar = CreateConVar(
+    "sv_gparticle_cooldown", "1",
+    bit.bor(FCVAR_ARCHIVE, FCVAR_UNREGISTERED),
+    "Cooldown time between particle emissions in miliseconds",
+    0, 1000
+)
+
 util.AddNetworkString("gparticle.emit")
 util.AddNetworkString("gparticle.clear")
 
