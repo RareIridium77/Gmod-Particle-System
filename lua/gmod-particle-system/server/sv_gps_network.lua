@@ -2,6 +2,7 @@ GParticleSystem = GParticleSystem or {}
 GParticleSystem.__internal = GParticleSystem.__internal or {}
 
 local gnet = {}
+local emitRateLimits = {}
 local gparticle = include("gparticle.lua")
 
 local unreliableCvar = CreateConVar(
@@ -33,10 +34,10 @@ local tracingCvar = CreateConVar(
 )
 
 local cooldownCvar = CreateConVar(
-    "sv_gparticle_cooldown", "1",
+    "sv_gparticle_cooldown", "0.025",
     bit.bor(FCVAR_ARCHIVE, FCVAR_UNREGISTERED),
-    "Cooldown time between particle emissions in miliseconds",
-    0, 1000
+    "Cooldown time between particle emissions in seconds",
+    0.0015, 0.25
 )
 
 util.AddNetworkString("gparticle.emit")
@@ -68,6 +69,12 @@ end
 local function SendParticle(gp, target)
     local pos = gp:GetPos()
     if not pos or not isvector(pos) or not IsTraceVisible(pos) then return end
+
+    local key = gp:GetParticleID() or "__default"
+
+    local now = CurTime()
+    if emitRateLimits[key] and now < emitRateLimits[key] then return end
+    emitRateLimits[key] = now + cooldownCvar:GetInt()
 
     gp:SetWind(getWind())
     gp:SetWindTurbulence(getTurbulence())
