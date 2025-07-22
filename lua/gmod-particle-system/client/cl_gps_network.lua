@@ -12,8 +12,12 @@ local allParticles = {}
 
 local function safeRemoveEmitter(i)
     local job = activeEmitters[i]
-    if job and job.emitter and isfunction(job.emitter.Finish) then
-        job.emitter:Finish()
+    if job then
+        if job.emitter and isfunction(job.emitter.Finish) then
+            job.emitter:Finish()
+        end
+        job.gp = nil
+        job.entID = nil
     end
     table.remove(activeEmitters, i)
 end
@@ -127,7 +131,8 @@ local function emit()
         current = 0,
         emitRate = gp:GetEmitRate() or 0,
         nextEmit = CurTime(),
-        emitter = emitter
+        emitter = emitter,
+        entID = gp:GetEntityID() or nil,
     })
 end
 
@@ -147,3 +152,15 @@ end
 net.Receive("gparticle.emit", emit)
 net.Receive("gparticle.clear", clear)
 concommand.Add("gparticle.clear", clear)
+
+hook.Add("EntityRemoved", "GParticleSystem.ClearOnEntityRemove", function(ent)
+    if not IsValid(ent) then return end
+    
+    local entID = ent:EntIndex()
+    for i = #activeEmitters, 1, -1 do
+        local job = activeEmitters[i]
+        if job.entID == entID then
+            safeRemoveEmitter(i)
+        end
+    end
+end)
