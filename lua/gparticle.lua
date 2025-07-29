@@ -2,62 +2,53 @@ local GParticle = {}
 GParticle.__index = GParticle
 
 local dParams = {
-    lifetime      = 2.5,
-    speed         = 1,
-    color         = {194, 178, 128},
-    pos           = Vector(0, 0, 0),
     use3D         = false,
+
+    lifetime      = 2.5,
+    pos           = Vector(0, 0, 0),
+    normal        = Vector(0, 0, 1),
     effectName    = "particles/dust",
 
-    startAlpha    = 200,
-    endAlpha      = 10,
-    startSize     = 4,
-    endSize       = 2,
-    roll          = math.Rand(0, 360),
-    rollDelta     = math.Rand(-0.5, 0.5),
-    gravity       = Vector(0, 0, -250),
-    airResistance = 10,
-    velocity      = Vector(0, 0, 0),
-    collide       = true,
-    bounce        = 0.2,
-    lighting      = false,
-    angleVel      = Angle(0, 0, 0),
     count         = 1,
+    repeatCount   = 0,
+    repeatDelay   = 0,
+
     emitRate      = 0,
+
     entityID      = -1,
     particleID    = "basic",
-    wind          = vector_origin,
-    windTurbulence= 0.05,
 }
 
 local dParamTypes = {
-    lifetime     = "float",
-    speed        = "float",
-    color        = "color",
-    pos          = "vector",
     use3D        = "bool",
+
+    lifetime     = "float",
+    pos          = "vector",
+    normal       = "vector",
     effectName   = "string",
 
-    startAlpha   = "int",
-    endAlpha     = "int",
-    startSize    = "float",
-    endSize      = "float",
-    roll         = "float",
-    rollDelta    = "float",
-    gravity      = "vector",
-    airResistance= "float",
-    velocity     = "vector",
-    collide      = "bool",
-    bounce       = "float",
-    lighting     = "bool",
-    angleVel     = "angle",
     count        = "int",
+    repeatCount  = "int",
+    repeatDelay  = "float",
+
     emitRate     = "float",
+
     entityID     = "int",
     particleID   = "string",
-    wind         = "vector",
-    windTurbulence="float"
 }
+
+-- Map field names to compact indices
+local paramIndexMap = {}
+local indexParamMap = {}
+
+do
+    local idx = 0
+    for k, _ in pairs(dParams) do
+        paramIndexMap[k] = idx
+        indexParamMap[idx] = k
+        idx = idx + 1
+    end
+end
 
 local sub   = string.sub
 local upper = string.upper
@@ -65,12 +56,8 @@ local upper = string.upper
 -- Auto setter, getter
 for k, _ in pairs(dParams) do
     local clized = upper(sub(k, 1, 1)) .. sub(k, 2)
-    GParticle["Set" .. clized] = function(self, v)
-        self[k] = v
-    end
-    GParticle["Get" .. clized] = function(self)
-        return self[k]
-    end
+    GParticle["Set" .. clized] = function(self, v) self[k] = v end
+    GParticle["Get" .. clized] = function(self) return self[k] end
 end
 
 function GParticle:new(params)
@@ -121,13 +108,13 @@ local netWriters = {
         elseif istable(v) and #v >= 3 then
             r, g, b = v[1], v[2], v[3]
         end
-        net.WriteUInt(r or 255, 8)
-        net.WriteUInt(g or 255, 8)
-        net.WriteUInt(b or 255, 8)
+        net.WriteUInt(r, 8)
+        net.WriteUInt(g, 8)
+        net.WriteUInt(b, 8)
     end,
     bool   = function(v) net.WriteBit(v) end,
-    string = function(v) net.WriteString(string.sub(v, 1, stringLimit or 128)) end,
-    int = function(v) net.WriteInt(math.Clamp(v, -intLimit, intLimit), 16) end,
+    string = function(v) net.WriteString(string.sub(v, 1, stringLimit)) end,
+    int    = function(v) net.WriteInt(math.Clamp(v, -intLimit, intLimit), 16) end,
     angle  = function(v) net.WriteAngle(v) end
 }
 
@@ -145,11 +132,22 @@ local netReaders = {
 
 if SERVER then
     function GParticle:WriteToNet()
+        local changed = {}
+
         for k, typ in pairs(dParamTypes) do
-            local writeFunc = netWriters[typ]
-            if writeFunc then
-                writeFunc(self[k])
+            local v = self[k]
+            local def = dParams[k]
+            if v ~= def then
+                changed[#changed + 1] = k
             end
+        end
+
+        net.WriteUInt(#changed, 6) -- up to 64 fields
+
+        for _, k in ipairs(changed) do
+            local index = paramIndexMap[k]
+            net.WriteUInt(index, 6) -- send param ID
+            netWriters[dParamTypes[k]](self[k])
         end
     end
 end
@@ -157,12 +155,20 @@ end
 if CLIENT then
     function GParticle.ReadFromNet()
         local obj = setmetatable({}, GParticle)
-        for k, typ in pairs(dParamTypes) do
-            local readFunc = netReaders[typ]
-            if readFunc then
-                obj[k] = readFunc()
-            end
+
+        -- Set default first
+        for k, v in pairs(dParams) do
+            obj[k] = v
         end
+
+        local count = net.ReadUInt(6)
+        for i = 1, count do
+            local index = net.ReadUInt(6)
+            local k = indexParamMap[index]
+            local typ = dParamTypes[k]
+            obj[k] = netReaders[typ]()
+        end
+
         return obj
     end
 end
