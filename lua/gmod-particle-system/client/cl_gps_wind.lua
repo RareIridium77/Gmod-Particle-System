@@ -62,8 +62,7 @@ function wind:GetWindVelocity()
 end
 
 function wind:ApplyWindToParticle(p, forceMul, turbMul, seed)
-    local wind = GParticleSystem.__internal.wind
-    if not IsValid(p) then return end
+    if not p then return false end
 
     forceMul = forceMul or 1
     turbMul = turbMul or 1
@@ -73,17 +72,12 @@ function wind:ApplyWindToParticle(p, forceMul, turbMul, seed)
     local turb = wind:GetWindTurbulence() * turbMul
 
     if turb > 0 then
-        local t = CurTime()
-        local wobble = Vector(
-            math.sin(t * 4.3 + seed),
-            math.cos(t * 3.7 + seed),
-            math.sin(t * 5.1 + seed)
-        ) * turb
-
-        windVel = windVel + wobble
+        windVel = windVel + VectorRand() * turb
     end
 
-    p:SetVelocity(p:GetVelocity() + windVel)
+    p:SetGravity(p:GetGravity() + windVel)
+    debugoverlay.Line(p:GetPos(), p:GetPos() + p:GetGravity(), 1, Color(255, 255, 0), true)
+    return true 
 end
 
 GParticleSystem.__internal.wind = wind

@@ -151,7 +151,5 @@ concommand.Add("gparticle_test", function(ply, cmd, args)
         particleID = "examples.sand",
         count      = 50,
         emitRate   = 0.0025,
-        repeatCount= 3,
-        repeatDelay= 0.1,
     })
 end)

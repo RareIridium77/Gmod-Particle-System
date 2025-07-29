@@ -1,7 +1,8 @@
 GParticleSystem = GParticleSystem or {}
 GParticleSystem.__internal = GParticleSystem.__internal or {}
 
-local wind = GParticleSystem.__internal.wind or {}
+local wind = GParticleSystem.__internal.wind
+
 local gparticle = include("gparticle.lua")
 
 local maxEmittersCvar = CreateConVar("cl_gparticle.max.particles", "128", FCVAR_ARCHIVE, "Max allowed emitters at once", 1, 256)
@@ -79,13 +80,6 @@ local function doJob(p, job, indexOverride)
 
     p:SetPos(pos)
 
-    -- Optional: apply turbulence randomly
-    local turb = wind.GetWindTurbulence and wind:GetWindTurbulence()
-    if turb and turb > 0 then
-        local offset = VectorRand() * turb
-        p:SetVelocity(p:GetVelocity() + offset)
-    end
-
     local lifetime = gp:GetLifetime()
     if lifetime and lifetime > 0 then
         p:SetDieTime(lifetime)
@@ -101,9 +95,7 @@ local function doJob(p, job, indexOverride)
         end
     end
 
-    if wind.ApplyWindToParticle then
-        wind:ApplyWindToParticle(p)
-    end
+    wind:ApplyWindToParticle(p, 1, 1, i)
 
     table.insert(allParticles, p)
 end
