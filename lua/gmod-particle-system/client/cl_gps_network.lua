@@ -5,7 +5,7 @@ local wind = GParticleSystem.__internal.wind
 
 local gparticle = include("gparticle.lua")
 
-local maxEmittersCvar = CreateConVar("cl_gparticle.max.particles", "128", FCVAR_ARCHIVE, "Max allowed emitters at once", 1, 256)
+local maxEmittersCvar = CreateConVar("cl_gparticle.max.emitters", "256", FCVAR_ARCHIVE, "Max allowed emitters at once", 1, 512)
 local updateRateCvar = CreateConVar("cl_gparticle.rate", "15", FCVAR_ARCHIVE, "GParticleSystem update rate (fps)", 1, 60)
 local showDebug = CreateClientConVar("cl_gparticle.debugoverlay", "1", true, false, "Show GParticleSystem debug overlay")
 
