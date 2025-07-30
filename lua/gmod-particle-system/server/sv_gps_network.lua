@@ -10,8 +10,8 @@ local cvar_unreliable = CreateConVar("sv_gparticle.net.unreliable", "1", FCVAR_A
     "1 = stable net but may lose visuals, 0 = non-stable net but visuals always show", 0, 1)
 local cvar_optimized = CreateConVar("sv_gparticle.net.optimized", "0", FCVAR_ARCHIVE + FCVAR_UNREGISTERED,
     "1 = particles only sent to players who might see them", 0, 1)
-local cvar_max_count = CreateConVar("sv_gparticle.max.count", "32", FCVAR_ARCHIVE + FCVAR_UNREGISTERED,
-    "Maximum particles per emit call", 1, 256)
+local cvar_max_count = CreateConVar("sv_gparticle.max.count", "512", FCVAR_ARCHIVE + FCVAR_UNREGISTERED,
+    "Maximum particles per emit call", 1, 4090)
 local cvar_trace_check = CreateConVar("sv_gparticle.trace.check", "1", FCVAR_ARCHIVE + FCVAR_UNREGISTERED,
     "Prevents emission if inside wall", 0, 1)
 local cvar_emit_cooldown = CreateConVar("sv_gparticle.cooldown", "0.025", FCVAR_ARCHIVE + FCVAR_UNREGISTERED,
