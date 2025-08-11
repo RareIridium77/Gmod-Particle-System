@@ -22,9 +22,14 @@ local function emitFromData(gp)
     local emitter = ParticleEmitter(gp:GetPos(), gp:GetUse3D())
     if not emitter then return end
 
+    local cnt = gp:GetCount()
+    if cnt == nil or cnt < 1 then
+        cnt = 1
+    end
+
     table.insert(activeEmitters, {
         gp = gp,
-        count = gp:GetCount(),
+        count = cnt,
         current = 0,
         emitRate = gp:GetEmitRate() or 0,
         nextEmit = CurTime(),
@@ -63,18 +68,23 @@ end
 
 local function doJob(p, job, indexOverride)
     local gp = job.gp
-    local pos = gp:GetPos()
+    local pos = gp:GetPos() or vector_origin
+
+    if pos:IsZero() then
+        pos = p:GetPos() or vector_origin
+    end
 
     local entID = gp:GetEntityID()
     if entID and entID > 0 then
         local ent = Entity(entID)
-        if not IsValid(ent) then
-            gp:SetEntityID(nil)
-            return
-        else
+        if IsValid(ent) then
             local maxs = ent:OBBMaxs().z * 0.5
             pos = ent:GetPos() + ent:GetUp() * maxs
             p:SetVelocityScale(true)
+        else
+            gp:SetEntityID(nil)
+            p:SetVelocityScale(false)
+            pos = gp:GetPos()
         end
     end
 
@@ -104,6 +114,14 @@ hook.Add("Think", "GParticleSystem.EmitStepwise", function()
     if CurTime() < nextThinkTime then return end
     nextThinkTime = CurTime() + (1 / updateRateCvar:GetFloat())
 
+    for i = #allParticles, 1, -1 do
+        local p = allParticles[i]
+
+        if not IsValid(p) then
+            table.remove(allParticles, i)
+        end
+    end
+    
     for i = #activeEmitters, 1, -1 do
         local job = activeEmitters[i]
         local gp = job.gp
@@ -118,7 +136,12 @@ hook.Add("Think", "GParticleSystem.EmitStepwise", function()
             for j = 1, job.count do
                 local pos = gp:GetPos()
                 local p = emitter:Add(gp:GetEffectName(), pos)
-                if not p then break end
+                if not p then
+                    if showDebug:GetBool() then
+                        print("[GParticleSystem] emitter:Add() returned nil for", gp:GetEffectName())
+                    end
+                    continue
+                end
 
                 local ok = hook.Run("gparticle.PreEmit", p, j, gp)
                 if ok ~= false then
@@ -142,14 +165,6 @@ hook.Add("Think", "GParticleSystem.EmitStepwise", function()
 
             if job.current >= job.count then
                 safeRemoveEmitter(i)
-            end
-        end
-        
-        for i = #allParticles, 1, -1 do
-            local p = allParticles[i]
-
-            if not IsValid(p) then
-                table.remove(allParticles, i)
             end
         end
     end
@@ -183,7 +198,9 @@ hook.Add("EntityRemoved", "GParticleSystem.ClearOnEntityRemove", function(ent)
     for i = #activeEmitters, 1, -1 do
         local job = activeEmitters[i]
         if job.entID == entID then
-            safeRemoveEmitter(i)
+            job.entID = nil
+            job.gp:SetEntityID(nil)
+            job.gp:SetPos(ent:GetPos())
         end
     end
 end)
