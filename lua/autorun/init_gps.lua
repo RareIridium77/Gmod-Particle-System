@@ -5,7 +5,7 @@ AddCSLuaFile("gmod-particle-system/client/cl_gps_cyclic.lua")
 AddCSLuaFile("gmod-particle-system/client/cl_gps_network.lua")
 
 GParticleSystem = GParticleSystem or {}
-GParticleSystem.Version = "0.0.3"
+GParticleSystem.Version = "0.0.4"
 GParticleSystem.VersionType = "beta"
 
 -- Client
